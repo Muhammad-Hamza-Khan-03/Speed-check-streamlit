@@ -125,19 +125,27 @@ def check_speed():
     return download_speed, upload_speed, ping
 
 # Create gauge chart
+# Create smaller gauge chart
 def create_gauge_chart(speed, title, gauge_max=100):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=speed,
-        title={'text': title, 'font': {'size': 24}},
+        title={'text': title, 'font': {'size': 18}},  # Smaller font size
         gauge={'axis': {'range': [0, gauge_max]},
                'bar': {'color': "#FF6347"},
                'steps': [
                    {'range': [0, gauge_max * 0.5], 'color': "lightgray"},
-                   {'range': [gauge_max * 0.5, gauge_max], 'color': "gray"}]}
+                   {'range': [gauge_max * 0.5, gauge_max], 'color': "gray"}]},
     ))
-    fig.update_layout(height=300, margin=dict(t=0, b=0, l=0, r=0))
+    # Adjust the layout for smaller gauges
+    fig.update_layout(
+        height=200,  # Reduced height
+        width=250,   # Reduced width
+        margin=dict(t=0, b=0, l=0, r=0),
+        paper_bgcolor="white",  # Optional: set background to black for style
+    )
     return fig
+
 
 # Real-time data setup
 download_speeds = []
@@ -184,8 +192,8 @@ def start_thread():
             timestamps.append(datetime.now().strftime("%H:%M:%S"))
             
             # Update gauges
-            download_gauge.plotly_chart(create_gauge_chart(download_speed, "Download Speed (Mbps)"), use_container_width=True,width=500,height = 300)
-            upload_gauge.plotly_chart(create_gauge_chart(upload_speed, "Upload Speed (Mbps)"), use_container_width=True,width=500,height = 300)
+            download_gauge.plotly_chart(create_gauge_chart(download_speed, "Download Speed (Mbps)"), use_container_width=True)
+            upload_gauge.plotly_chart(create_gauge_chart(upload_speed, "Upload Speed (Mbps)"), use_container_width=True)
             
             # Display best connectivity (ping)
             st.sidebar.write(f"Best Connectivity (Ping): {ping} ms")
@@ -215,3 +223,4 @@ def start_thread():
 
 # When the button is clicked, toggle the test state and thread
 toggle_button and toggle_test()
+download_gauge.plotly_chart(create_gauge_chart(10, "Download Speed (Mbps)"), use_container_width=True)
