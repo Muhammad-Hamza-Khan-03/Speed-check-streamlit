@@ -115,7 +115,7 @@ col1, col2 = st.columns(2)
 download_gauge = col1.empty()
 upload_gauge = col2.empty()
 
-# Initialize line chart placeholders
+# Initialize bar chart placeholders
 st.subheader("Speed History")
 history_chart = st.empty()
 
@@ -146,10 +146,25 @@ def start_thread():
         download_gauge.plotly_chart(create_gauge_chart(download_speed, "Download Speed (Mbps)"), use_container_width=True)
         upload_gauge.plotly_chart(create_gauge_chart(upload_speed, "Upload Speed (Mbps)"), use_container_width=True)
         
-        # Update history line chart with latest data
+        # Update history bar chart with latest data
         df = pd.DataFrame({'Timestamp': timestamps, 'Download Speed (Mbps)': download_speeds, 'Upload Speed (Mbps)': upload_speeds})
         df.set_index('Timestamp', inplace=True)
-        history_chart.line_chart(df)
+        
+        # Create bar chart for the history
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=df.index, y=df['Download Speed (Mbps)'], name='Download Speed (Mbps)', marker_color='blue'))
+        fig.add_trace(go.Bar(x=df.index, y=df['Upload Speed (Mbps)'], name='Upload Speed (Mbps)', marker_color='orange'))
+        
+        # Update layout and display
+        fig.update_layout(
+            barmode='group',
+            title="Speed Test History (Last Few Tests)",
+            xaxis_title="Timestamp",
+            yaxis_title="Speed (Mbps)",
+            xaxis_tickangle=45,
+            template="plotly_dark"
+        )
+        history_chart.plotly_chart(fig)
 
         # Wait before the next speed check
         time.sleep(refresh_rate)
