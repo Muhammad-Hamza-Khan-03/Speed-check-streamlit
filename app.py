@@ -9,43 +9,9 @@ import requests
 import socket
 
 # Page Config and Custom CSS Styling
-st.set_page_config(page_title="Real-Time Speed Checker", layout="wide")
+st.set_page_config(page_title="Test Your Internet Speed", layout="wide")
 
-st.markdown(
-    """
-    <style>
-    .title {
-        font-size: 36px;
-        color: #FF6347;
-        text-align: center;
-        font-weight: bold;
-        margin-top: -20px;
-    }
-    .sidebar .sidebar-content {
-        background-color: #f0f2f6;
-    }
-    .stButton>button {
-        background-color: #FF6347;
-        color: white;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: bold;
-        height: 45px;
-    }
-    .stButton>button:hover {
-        background-color: #FF4500;
-    }
-    .gauge-container {
-        text-align: center;
-    }
-    .history-container {
-        padding-top: 20px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
+# //style
 st.markdown('<div class="title">📊 Real-Time Internet Speed Checker</div>', unsafe_allow_html=True)
 
 # Intro
@@ -93,7 +59,6 @@ def get_ip_and_location():
         st.error(f"Could not fetch IP or location: {e}")
         return None, None, None, None, None
 
-
 # Get Local IP address (private IP)
 def get_local_ip():
     return socket.gethostbyname(socket.gethostname())
@@ -109,10 +74,9 @@ if ip:
     st.sidebar.write(f"Region: {region}")
     st.sidebar.write(f"Country: {country}")
     st.sidebar.write(f"ISP: {isp}")
-   
 
 # User-defined refresh rate
-refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", min_value=1, max_value=10, value=5)
+refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", min_value=1, max_value=10, value=2)
 
 # Function to get speeds
 def check_speed():
@@ -124,28 +88,25 @@ def check_speed():
     ping = st_test.results.ping  # Ping (in ms)
     return download_speed, upload_speed, ping
 
-# Create gauge chart
-# Create smaller gauge chart
+# Create smaller gauge chart with custom colors
 def create_gauge_chart(speed, title, gauge_max=100):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=speed,
-        title={'text': title, 'font': {'size': 18}},  # Smaller font size
+        title={'text': title, 'font': {'size': 18}},
         gauge={'axis': {'range': [0, gauge_max]},
-               'bar': {'color': "#FF6347"},
+               'bar': {'color': "#3B82F6"},
                'steps': [
-                   {'range': [0, gauge_max * 0.5], 'color': "lightgray"},
-                   {'range': [gauge_max * 0.5, gauge_max], 'color': "gray"}]},
+                   {'range': [0, gauge_max * 0.5], 'color': "#D1D5DB"},
+                   {'range': [gauge_max * 0.5, gauge_max], 'color': "#9CA3AF"}]},
     ))
-    # Adjust the layout for smaller gauges
     fig.update_layout(
-        height=200,  # Reduced height
-        width=250,   # Reduced width
+        height=200,
+        width=250,
         margin=dict(t=0, b=0, l=0, r=0),
-        paper_bgcolor="white",  # Optional: set background to black for style
+        paper_bgcolor="white",
     )
     return fig
-
 
 # Real-time data setup
 download_speeds = []
@@ -154,7 +115,8 @@ ping_values = []
 timestamps = []
 
 # UI setup
-toggle_button = st.button("Start Speed Test")
+st.header("Start Speed Test")
+toggle_button = st.button("Click Here to Start")
 
 col1, col2 = st.columns(2)
 
@@ -176,10 +138,10 @@ def toggle_test():
         st.session_state.running = False
     else:
         st.session_state.running = True
+        # t1 = threading.Thread(target=start_thread()).start()
+        # t2 =threading.Thread(target=start_thread()).start()
         start_thread()
-
 def start_thread():
-    """Start the speed test in a new thread."""
     with st.spinner("Running Speed Test... Please wait!"):
         while st.session_state.running:
             # Get speed measurements
@@ -204,8 +166,8 @@ def start_thread():
             
             # Create bar chart for the history
             fig = go.Figure()
-            fig.add_trace(go.Bar(x=df.index, y=df['Download Speed (Mbps)'], name='Download Speed (Mbps)', marker_color='blue'))
-            fig.add_trace(go.Bar(x=df.index, y=df['Upload Speed (Mbps)'], name='Upload Speed (Mbps)', marker_color='orange'))
+            fig.add_trace(go.Bar(x=df.index, y=df['Download Speed (Mbps)'], name='Download Speed (Mbps)', marker_color='#38BDF8'))
+            fig.add_trace(go.Bar(x=df.index, y=df['Upload Speed (Mbps)'], name='Upload Speed (Mbps)', marker_color='#FB923C'))
             
             # Update layout and display
             fig.update_layout(
@@ -223,4 +185,3 @@ def start_thread():
 
 # When the button is clicked, toggle the test state and thread
 toggle_button and toggle_test()
-download_gauge.plotly_chart(create_gauge_chart(10, "Download Speed (Mbps)"), use_container_width=True)
