@@ -5,6 +5,8 @@ from datetime import datetime
 import pandas as pd
 import time
 import threading
+import requests
+import socket
 
 # Page Config and Custom CSS Styling
 st.set_page_config(page_title="Real-Time Speed Checker", layout="wide")
@@ -74,6 +76,41 @@ except Exception as e:
     servers = None
     selected_server_id = None
 
+# Fetch public IP address and location
+def get_ip_and_location():
+    try:
+        ip_info = requests.get('https://api64.ipify.org?format=json').json()
+        ip = ip_info['ip']
+        
+        # Get location info via ip-api.com
+        location_info = requests.get(f'http://ip-api.com/json/{ip}').json()
+        city = location_info.get('city', 'N/A')
+        region = location_info.get('regionName', 'N/A')
+        country = location_info.get('country', 'N/A')
+        isp = location_info.get('isp', 'N/A')
+        return ip, city, region, country, isp
+    except Exception as e:
+        st.error(f"Could not fetch IP or location: {e}")
+        return None, None, None, None, None
+
+
+# Get Local IP address (private IP)
+def get_local_ip():
+    return socket.gethostbyname(socket.gethostname())
+
+# Display the IP and Location Info
+ip, city, region, country, isp = get_ip_and_location()
+local_ip = get_local_ip()
+
+if ip:
+    st.sidebar.subheader("Your IP and Location")
+    st.sidebar.write(f"IP: {ip}")
+    st.sidebar.write(f"City: {city}")
+    st.sidebar.write(f"Region: {region}")
+    st.sidebar.write(f"Country: {country}")
+    st.sidebar.write(f"ISP: {isp}")
+   
+
 # User-defined refresh rate
 refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", min_value=1, max_value=10, value=5)
 
@@ -84,7 +121,8 @@ def check_speed():
         st_test.get_best_server([server for server_group in servers.values() for server in server_group if server['id'] == selected_server_id])
     download_speed = round(st_test.download() / 1_000_000, 2)  # Convert to Mbps
     upload_speed = round(st_test.upload() / 1_000_000, 2)
-    return download_speed, upload_speed
+    ping = st_test.results.ping  # Ping (in ms)
+    return download_speed, upload_speed, ping
 
 # Create gauge chart
 def create_gauge_chart(speed, title, gauge_max=100):
@@ -104,6 +142,7 @@ def create_gauge_chart(speed, title, gauge_max=100):
 # Real-time data setup
 download_speeds = []
 upload_speeds = []
+ping_values = []
 timestamps = []
 
 # UI setup
@@ -133,41 +172,46 @@ def toggle_test():
 
 def start_thread():
     """Start the speed test in a new thread."""
-    while st.session_state.running:
-        # Get speed measurements
-        download_speed, upload_speed = check_speed()
-        
-        # Append data to lists
-        download_speeds.append(download_speed)
-        upload_speeds.append(upload_speed)
-        timestamps.append(datetime.now().strftime("%H:%M:%S"))
-        
-        # Update gauges
-        download_gauge.plotly_chart(create_gauge_chart(download_speed, "Download Speed (Mbps)"), use_container_width=True)
-        upload_gauge.plotly_chart(create_gauge_chart(upload_speed, "Upload Speed (Mbps)"), use_container_width=True)
-        
-        # Update history bar chart with latest data
-        df = pd.DataFrame({'Timestamp': timestamps, 'Download Speed (Mbps)': download_speeds, 'Upload Speed (Mbps)': upload_speeds})
-        df.set_index('Timestamp', inplace=True)
-        
-        # Create bar chart for the history
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=df.index, y=df['Download Speed (Mbps)'], name='Download Speed (Mbps)', marker_color='blue'))
-        fig.add_trace(go.Bar(x=df.index, y=df['Upload Speed (Mbps)'], name='Upload Speed (Mbps)', marker_color='orange'))
-        
-        # Update layout and display
-        fig.update_layout(
-            barmode='group',
-            title="Speed Test History (Last Few Tests)",
-            xaxis_title="Timestamp",
-            yaxis_title="Speed (Mbps)",
-            xaxis_tickangle=45,
-            template="plotly_dark"
-        )
-        history_chart.plotly_chart(fig)
+    with st.spinner("Running Speed Test... Please wait!"):
+        while st.session_state.running:
+            # Get speed measurements
+            download_speed, upload_speed, ping = check_speed()
+            
+            # Append data to lists
+            download_speeds.append(download_speed)
+            upload_speeds.append(upload_speed)
+            ping_values.append(ping)
+            timestamps.append(datetime.now().strftime("%H:%M:%S"))
+            
+            # Update gauges
+            download_gauge.plotly_chart(create_gauge_chart(download_speed, "Download Speed (Mbps)"), use_container_width=True,width=500,height = 300)
+            upload_gauge.plotly_chart(create_gauge_chart(upload_speed, "Upload Speed (Mbps)"), use_container_width=True,width=500,height = 300)
+            
+            # Display best connectivity (ping)
+            st.sidebar.write(f"Best Connectivity (Ping): {ping} ms")
+            
+            # Update history bar chart with latest data
+            df = pd.DataFrame({'Timestamp': timestamps, 'Download Speed (Mbps)': download_speeds, 'Upload Speed (Mbps)': upload_speeds})
+            df.set_index('Timestamp', inplace=True)
+            
+            # Create bar chart for the history
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=df.index, y=df['Download Speed (Mbps)'], name='Download Speed (Mbps)', marker_color='blue'))
+            fig.add_trace(go.Bar(x=df.index, y=df['Upload Speed (Mbps)'], name='Upload Speed (Mbps)', marker_color='orange'))
+            
+            # Update layout and display
+            fig.update_layout(
+                barmode='group',
+                title="Speed Test History (Last Few Tests)",
+                xaxis_title="Timestamp",
+                yaxis_title="Speed (Mbps)",
+                xaxis_tickangle=45,
+                template="plotly_dark"
+            )
+            history_chart.plotly_chart(fig)
 
-        # Wait before the next speed check
-        time.sleep(refresh_rate)
+            # Wait before the next speed check
+            time.sleep(refresh_rate/10)
 
 # When the button is clicked, toggle the test state and thread
 toggle_button and toggle_test()
