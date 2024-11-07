@@ -175,3 +175,14 @@ def app():
     # Run the test in real-time when button is toggled
     if st.session_state.is_running:
         update_charts()
+
+        
+    if st.button("Show History"):
+        # Show the speed test history chart
+        df = pd.DataFrame({"Time": timestamps, "Download": download_speeds, "Upload": upload_speeds})
+        fig = go.Figure(data=[
+            go.Scatter(x=df['Time'], y=df['Download'], mode='lines', name="Download", line=dict(color='blue')),
+            go.Scatter(x=df['Time'], y=df['Upload'], mode='lines', name="Upload", line=dict(color='orange'))
+        ])
+        fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
+        st.plotly_chart(fig)
