@@ -1,6 +1,7 @@
 import streamlit as st
 import speedtest
 import plotly.graph_objects as go
+import psutil
 from datetime import datetime
 import pandas as pd
 import time
@@ -8,182 +9,110 @@ import threading
 import requests
 import socket
 
-try:
-    from pywifi import PyWiFi, const
-except ImportError:
-    st.error("PyWiFi library is not installed. Run `pip install pywifi` to enable Wi-Fi connectivity features.")
-
 # Page Config and Custom CSS Styling
-st.set_page_config(page_title="Test Your Internet Speed", layout="wide")
+st.set_page_config(page_title="Advanced WiFi Speed Checker", layout="wide")
 
-# Custom CSS
-st.markdown("""
-<style>
-    .title {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #2c3e50;
-        text-align: center;
-    }
-    .stButton > button {
-        background-color: #3498db;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    .stButton > button:hover {
-        background-color: #2980b9;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Section Headers
+st.markdown("<div class='title'>📊 Advanced WiFi Speed Checker</div>", unsafe_allow_html=True)
 
-st.markdown('<div class="title">📊 Real-Time Internet Speed Checker with Wi-Fi Connector</div>', unsafe_allow_html=True)
+# Intro
+st.write("Measure download, upload speeds, diagnose network issues, and track device usage.")
 
-# Initialize Speed Test instance
+# Initialize Speedtest instance
 st_test = speedtest.Speedtest()
 
-# Sidebar for settings and Wi-Fi connector
+# Sidebar Settings
 st.sidebar.header("Settings")
-st.sidebar.subheader("Choose Speed Test Server")
-
-# Fetch available servers
-try:
-    servers = st_test.get_servers()
-    server_list = {s['id']: s['sponsor'] + " - " + s['name'] for s_list in servers.values() for s in s_list}
-    selected_server_id = st.sidebar.selectbox("Server", options=list(server_list.keys()), format_func=lambda x: server_list[x])
-except Exception as e:
-    st.error(f"Error loading servers: {e}")
-    servers, selected_server_id = None, None
-
-# Fetch public IP and location
-def get_ip_and_location():
-    try:
-        ip = requests.get('https://api64.ipify.org?format=json').json()['ip']
-        loc = requests.get(f'http://ip-api.com/json/{ip}').json()
-        return ip, loc.get('city', 'N/A'), loc.get('regionName', 'N/A'), loc.get('country', 'N/A'), loc.get('isp', 'N/A')
-    except:
-        return None, None, None, None, None
-
-ip, city, region, country, isp = get_ip_and_location()
-if ip:
-    st.sidebar.write(f"IP: {ip}\nCity: {city}\nRegion: {region}\nCountry: {country}\nISP: {isp}")
-
-# User-defined refresh rate
+selected_server_id = st.sidebar.selectbox("Choose Server", options=['Auto', 'Manual'])
 refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", min_value=1, max_value=10, value=2)
 
-# Wi-Fi Connection and Connected Network Stats
-def get_wifi_networks():
-    wifi = PyWiFi()
-    iface = wifi.interfaces()[0]
-    iface.scan()
-    time.sleep(2)
-    scan_results = iface.scan_results()
-    networks = [{"ssid": network.ssid, "signal": network.signal} for network in scan_results if network.ssid]
-    return sorted(networks, key=lambda x: x["signal"], reverse=True)
+# IP and Location Info
+def get_ip_location():
+    try:
+        ip = requests.get('https://api64.ipify.org?format=json').json()['ip']
+        location = requests.get(f'http://ip-api.com/json/{ip}').json()
+        return ip, location
+    except:
+        return None, None
 
-def connect_to_wifi(ssid, password=""):
-    wifi = PyWiFi()
-    iface = wifi.interfaces()[0]
-    profile = wifi.Profile()
-    profile.ssid = ssid
-    profile.auth = const.AUTH_ALG_OPEN
-    profile.akm.append(const.AKM_TYPE_WPA2PSK)
-    profile.cipher = const.CIPHER_TYPE_CCMP
-    profile.key = password
-    iface.remove_all_network_profiles()
-    iface.add_network_profile(profile)
-    iface.connect(iface.add_network_profile(profile))
-    time.sleep(5)
-    return iface.status() == const.IFACE_CONNECTED
+ip, location = get_ip_location()
+if ip:
+    st.sidebar.subheader("Network Info")
+    st.sidebar.write(f"Public IP: {ip}")
+    st.sidebar.write(f"Location: {location.get('city')}, {location.get('country')}")
+    st.sidebar.write(f"ISP: {location.get('isp')}")
 
-def get_connected_network_info():
-    wifi = PyWiFi()
-    iface = wifi.interfaces()[0]
-    if iface.status() == const.IFACE_CONNECTED:
-        connected_network = iface.network_profiles()[0]  # Retrieves the first profile (active)
-        ssid = connected_network.ssid
-        signal = iface.scan_results()[0].signal  # Retrieves signal strength
-        return ssid, signal
-    return None, None
-
-st.sidebar.subheader("Connected Network Stats")
-ssid, signal = get_connected_network_info()
-if ssid:
-    st.sidebar.write(f"Connected SSID: {ssid}")
-    st.sidebar.write(f"Signal Strength: {signal}%")
-else:
-    st.sidebar.write("No active Wi-Fi connection detected.")
-
-st.sidebar.subheader("Wi-Fi Connector")
-try:
-    wifi_networks = get_wifi_networks()
-    for network in wifi_networks:
-        st.sidebar.write(f"{network['ssid']} - Signal: {network['signal']}")
-        if st.sidebar.button(f"Connect to {network['ssid']}"):
-            password = st.sidebar.text_input(f"Enter password for {network['ssid']}", type="password")
-            if connect_to_wifi(network['ssid'], password):
-                st.sidebar.success(f"Connected to {network['ssid']}")
-            else:
-                st.sidebar.error(f"Failed to connect to {network['ssid']}")
-except:
-    st.sidebar.error("Could not retrieve Wi-Fi networks. Ensure pywifi is installed and compatible with your device.")
-
-# Speed Test and History Tracking
-download_speeds, upload_speeds, ping_values, timestamps = [], [], [], []
-
+# Speed Test Function
 def check_speed():
-    st_test.get_best_server([s for s_list in servers.values() for s in s_list if s['id'] == selected_server_id])
-    return round(st_test.download() / 1_000_000, 2), round(st_test.upload() / 1_000_000, 2), st_test.results.ping
+    st_test.get_best_server()
+    download = round(st_test.download() / 1_000_000, 2)
+    upload = round(st_test.upload() / 1_000_000, 2)
+    ping = st_test.results.ping
+    return download, upload, ping
 
-def create_gauge_chart(speed, title, gauge_max=100):
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=speed,
-        title={'text': title},
-        gauge={'axis': {'range': [0, gauge_max]}, 'bar': {'color': "#3B82F6"}}
-    ))
-    fig.update_layout(height=200, width=250, paper_bgcolor="white")
-    return fig
+# Device Usage Monitor (Real-time data usage per process)
+def device_usage():
+    usage = {p.name(): p.memory_info().rss / 1024**2 for p in psutil.process_iter(['name'])}
+    return sorted(usage.items(), key=lambda x: x[1], reverse=True)[:5]
 
+# Network History Tracking
+download_speeds, upload_speeds, pings, timestamps = [], [], [], []
+
+# Containers for Real-time Speed Check
 st.header("Start Speed Test")
-toggle_button = st.button("Click Here to Start or Stop")
-
-# Line Chart for Historical Data
-st.subheader("Speed History")
+download_gauge = st.empty()
+upload_gauge = st.empty()
 history_chart = st.empty()
 
-if 'running' not in st.session_state:
-    st.session_state.running = False
+# Function to update gauges and chart
+def update_charts():
+    download, upload, ping = check_speed()
+    download_speeds.append(download)
+    upload_speeds.append(upload)
+    pings.append(ping)
+    timestamps.append(datetime.now().strftime("%H:%M:%S"))
 
-def toggle_test():
-    st.session_state.running = not st.session_state.running
-    if st.session_state.running:
-        run_speed_test()
+    # Update gauges
+    download_gauge.plotly_chart(go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=download,
+        title={'text': "Download Speed (Mbps)"}
+    )), use_container_width=True)
 
-def run_speed_test():
-    while st.session_state.running:
-        download_speed, upload_speed, ping = check_speed()
-        download_speeds.append(download_speed)
-        upload_speeds.append(upload_speed)
-        ping_values.append(ping)
-        timestamps.append(datetime.now().strftime("%H:%M:%S"))
-        
-        # Gauge Charts
-        col1, col2 = st.columns(2)
-        col1.plotly_chart(create_gauge_chart(download_speed, "Download Speed (Mbps)"), use_container_width=True)
-        col2.plotly_chart(create_gauge_chart(upload_speed, "Upload Speed (Mbps)"), use_container_width=True)
-        
-        # Line Chart for Historical Data
-        df = pd.DataFrame({
-            'Timestamp': timestamps, 
-            'Download Speed': download_speeds, 
-            'Upload Speed': upload_speeds
-        }).set_index('Timestamp')
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df.index, y=df['Download Speed'], name='Download Speed (Mbps)', line=dict(color='royalblue')))
-        fig.add_trace(go.Scatter(x=df.index, y=df['Upload Speed'], name='Upload Speed (Mbps)', line=dict(color='orange')))
-        fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)", template="plotly_dark")
-        history_chart.plotly_chart(fig)
+    upload_gauge.plotly_chart(go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=upload,
+        title={'text': "Upload Speed (Mbps)"}
+    )), use_container_width=True)
 
+    # Update history chart
+    df = pd.DataFrame({"Time": timestamps, "Download": download_speeds, "Upload": upload_speeds})
+    fig = go.Figure(data=[
+        go.Scatter(x=df['Time'], y=df['Download'], mode='lines', name="Download", line=dict(color='blue')),
+        go.Scatter(x=df['Time'], y=df['Upload'], mode='lines', name="Upload", line=dict(color='orange'))
+    ])
+    fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
+    history_chart.plotly_chart(fig)
+
+# Start Speed Test Button
+if st.button("Run Speed Test"):
+    while True:
+        update_charts()
         time.sleep(refresh_rate)
 
-toggle_button and toggle_test()
+# Device Usage
+st.subheader("Top Device Data Usage (MB)")
+for process, usage in device_usage():
+    st.write(f"{process}: {usage:.2f} MB")
+
+# ISP Plan Comparison
+st.sidebar.subheader("ISP Plan Comparison")
+st.sidebar.write("Enter your plan speeds:")
+isp_download = st.sidebar.number_input("Download Speed (Mbps)", value=100.0)
+isp_upload = st.sidebar.number_input("Upload Speed (Mbps)", value=50.0)
+
+# Alerts for ISP Comparison
+if download_speeds and any(d < 0.8 * isp_download for d in download_speeds[-3:]):
+    st.warning("Download speed below 80% of ISP Plan!")
+if upload_speeds and any(u < 0.8 * isp_upload for u in upload_speeds[-3:]):
+    st.warning("Upload speed below 80% of ISP Plan!")
