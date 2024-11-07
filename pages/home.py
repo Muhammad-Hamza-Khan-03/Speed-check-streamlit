@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 from PIL import Image
-
+import pages.app as app
 # Page Config and Custom CSS Styling
 # st.set_page_config(page_title="Enhanced WiFi Speed Checker", layout="wide")
 
@@ -116,4 +116,5 @@ def home():
     
     
     # Button to navigate to the next page (Speed Test page)
-    st.button("Go to Speed Test", on_click=lambda: st.experimental_rerun())
+    if st.button("Go to Speed Test"):
+        st.switch_page("pages/app.py")

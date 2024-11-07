@@ -3,8 +3,6 @@ import speedtest
 import plotly.graph_objects as go
 from datetime import datetime
 import pandas as pd
-import time
-import threading
 import requests
 import socket
 
@@ -85,11 +83,14 @@ def app():
 
     # Display in the main content area
     if ip:
-        st.subheader("Your IP and Location")
-        st.write(f"Public IP: {ip}")
-        st.write(f"Local IP: {local_ip}")
-        st.write(f"Location: {city}, {region}, {country}")
-        st.write(f"ISP: {isp}")
+        st.markdown("<div class='stats-container'>", unsafe_allow_html=True)
+        st.markdown("<h3>Your IP and Location</h3>", unsafe_allow_html=True)
+        st.markdown(f"<p><strong>Public IP:</strong> {ip}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p><strong>Local IP:</strong> {local_ip}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p><strong>Location:</strong> {city}, {region}, {country}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p><strong>ISP:</strong> {isp}</p>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
     # Server Selection Dropdown based on server mode
     if server_mode == "Manual":
@@ -170,12 +171,11 @@ def app():
             ])
             fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
             st.plotly_chart(fig)
-            # time.sleep(1)
+           
 
     # Run the test in real-time when button is toggled
     if st.session_state.is_running:
         update_charts()
-
         
     if st.button("Show History"):
         # Show the speed test history chart
@@ -186,3 +186,4 @@ def app():
         ])
         fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
         st.plotly_chart(fig)
+app()
