@@ -7,45 +7,42 @@ import requests
 import socket
 
 # Page Config and Custom CSS Styling
-# st.set_page_config(page_title="Enhanced WiFi Speed Checker", layout="wide")
 def app():
     # Custom CSS for styling
-    st.markdown("""
-        <style>
-            .title {
-                font-size: 2.5rem;
-                font-weight: bold;
-                color: #2c3e50;
-                text-align: center;
-                margin-bottom: 2rem;
-            }
-            .start-button {
-                display: flex;
-                justify-content: center;
-                margin-top: 1rem;
-                margin-bottom: 2rem;
-            }
-            .stButton > button {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 0.5rem 1rem;
-                font-size: 1rem;
-                font-weight: bold;
-                transition: all 0.3s ease;
-            }
-            .stButton > button:hover {
-                background-color: #2980b9;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                transform: translateY(-2px);
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    st.markdown("""<style>
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .start-button {
+            display: flex;
+            justify-content: center;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stButton > button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .stButton > button:hover {
+            background-color: #2980b9;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+    </style>""", unsafe_allow_html=True)
 
     # Main title
     st.markdown("<div class='title'>Internet Speed Checker</div>", unsafe_allow_html=True)
-
+    
     # Initialize Speedtest
     st_test = speedtest.Speedtest()
 
@@ -81,7 +78,6 @@ def app():
     ip, city, region, country, isp = get_ip_and_location()
     local_ip = get_connected_wifi()
 
-    # Display in the main content area
     if ip:
         st.markdown("<div class='stats-container'>", unsafe_allow_html=True)
         st.markdown("<h3>Your IP and Location</h3>", unsafe_allow_html=True)
@@ -90,7 +86,6 @@ def app():
         st.markdown(f"<p><strong>Location:</strong> {city}, {region}, {country}</p>", unsafe_allow_html=True)
         st.markdown(f"<p><strong>ISP:</strong> {isp}</p>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
-
 
     # Server Selection Dropdown based on server mode
     if server_mode == "Manual":
@@ -132,58 +127,62 @@ def app():
     upload_gauge.plotly_chart(empty_gauge_chart("Upload Speed (Mbps)"), use_container_width=True)
 
     # History Tracking
-    download_speeds, upload_speeds, pings, timestamps = [], [], [], []
+    if 'download_speeds' not in st.session_state:
+        st.session_state.download_speeds = []
+    if 'upload_speeds' not in st.session_state:
+        st.session_state.upload_speeds = []
+    if 'pings' not in st.session_state:
+        st.session_state.pings = []
+    if 'timestamps' not in st.session_state:
+        st.session_state.timestamps = []
 
     # Toggle Start/Stop Button
     if 'is_running' not in st.session_state:
         st.session_state.is_running = False
     def toggle_button():
         st.session_state.is_running = not st.session_state.is_running
+    st.header("you might have to wait for maximum of 2 minutes for processing time")
     start_button = st.button("Start" if not st.session_state.is_running else "Stop", on_click=toggle_button)
+    number_of_times = st.number_input("Number of Times", min_value=1, max_value=10, value=1)
 
     # Update gauge and history chart in real-time
     def update_charts():
         while st.session_state.is_running:
             download, upload, ping = check_speed()
-            download_speeds.append(download)
-            upload_speeds.append(upload)
-            pings.append(ping)
-            timestamps.append(datetime.now().strftime("%H:%M:%S"))
+            st.session_state.download_speeds.append(download)
+            st.session_state.upload_speeds.append(upload)
+            st.session_state.pings.append(ping)
+            st.session_state.timestamps.append(datetime.now().strftime("%H:%M:%S"))
 
             # Update gauges
             download_gauge.plotly_chart(go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=download,
                 title={'text': "Download Speed (Mbps)"}
-            )), use_container_width=True)
+            )), use_container_width=True,key=datetime.now().strftime("%H:%M:%S"))
 
             upload_gauge.plotly_chart(go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=upload,
                 title={'text': "Upload Speed (Mbps)"}
-            )), use_container_width=True)
-
-            # Update history chart
-            df = pd.DataFrame({"Time": timestamps, "Download": download_speeds, "Upload": upload_speeds})
-            fig = go.Figure(data=[
-                go.Scatter(x=df['Time'], y=df['Download'], mode='lines', name="Download", line=dict(color='blue')),
-                go.Scatter(x=df['Time'], y=df['Upload'], mode='lines', name="Upload", line=dict(color='orange'))
-            ])
-            fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
-            st.plotly_chart(fig)
-           
+            )), use_container_width=True,key = "upload_gauge"+datetime.now().strftime("%H:%M:%S"))
 
     # Run the test in real-time when button is toggled
     if st.session_state.is_running:
-        update_charts()
-        
-    if st.button("Show History"):
-        # Show the speed test history chart
-        df = pd.DataFrame({"Time": timestamps, "Download": download_speeds, "Upload": upload_speeds})
-        fig = go.Figure(data=[
-            go.Scatter(x=df['Time'], y=df['Download'], mode='lines', name="Download", line=dict(color='blue')),
-            go.Scatter(x=df['Time'], y=df['Upload'], mode='lines', name="Upload", line=dict(color='orange'))
-        ])
-        fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
-        st.plotly_chart(fig)
+        for i in range(number_of_times):
+            update_charts()
+        st.session_state.is_running = False    
+    # Show the speed test history chart
+    df = pd.DataFrame({
+    "Time": st.session_state.timestamps, 
+    "Download": st.session_state.download_speeds, 
+    "Upload": st.session_state.upload_speeds
+    })
+    fig = go.Figure(data=[
+        go.Scatter(x=df['Time'], y=df['Download'], mode='lines', name="Download", line=dict(color='blue')),
+        go.Scatter(x=df['Time'], y=df['Upload'], mode='lines', name="Upload", line=dict(color='orange'))
+    ])
+    fig.update_layout(title="Speed Test History", xaxis_title="Time", yaxis_title="Speed (Mbps)")
+    st.plotly_chart(fig, use_container_width=True, key="history_chart"+datetime.now().strftime("%H:%M:%S"))
+
 app()

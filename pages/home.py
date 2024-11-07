@@ -2,10 +2,7 @@ import streamlit as st
 import time
 from PIL import Image
 import pages.app as app
-# Page Config and Custom CSS Styling
-# st.set_page_config(page_title="Enhanced WiFi Speed Checker", layout="wide")
 
-# Custom CSS for styling
 def home():
     st.markdown("""
         <style>
@@ -70,9 +67,7 @@ def home():
     
     # Add an animated background for cool visuals
     st.markdown('<div class="animated-background"></div>', unsafe_allow_html=True)
-    # image = Image.open('signals.jpg')  # Replace with the correct path to your image
-    # st.image(image, caption="Internet Speed Test in Action", use_column_width=True)
-    image = "speed.svg"  # Replace with the correct path to your SVG image
+    image = "speed.svg"  
     st.image(image, caption="Internet Speed Test in Action", use_column_width=True)
     # Main title
     st.markdown("<div class='title'>Welcome to the Enhanced WiFi Speed Checker</div>", unsafe_allow_html=True)
@@ -110,11 +105,7 @@ def home():
     
     st.markdown("</div>", unsafe_allow_html=True)
     
-    # Optional: Add an image to make the homepage more visually appealing
-    
-    # Footer with links to other pages or sections
-    
-    
+   
     # Button to navigate to the next page (Speed Test page)
     if st.button("Go to Speed Test"):
         st.switch_page("pages/app.py")
