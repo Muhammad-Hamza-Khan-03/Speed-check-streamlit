@@ -17,10 +17,11 @@ Built to **learn how speed checkers work**, understand **their use**, and practi
 ## 🎥 Demo Video
 
 ### Preview
-![Demo Preview](Screenshot from 2025-09-30 12-40-30.png)
+![Demo Preview](Screenshot%20from%202025-09-30%2012-40-30.png)
 
 ### Full Demo (.webm)
 <video src="speed-check-app-demo.webm" controls width="600"></video>
+
 
 ---
 
