@@ -36,4 +36,4 @@ Built to **learn how speed checkers work**, understand **their use**, and practi
    ```
 
 ### Demo Video:
-![Demo](speed-check-app-demo.webm)
+[![Demo](Screenshot from 2025-09-30 12-40-30.png)](speed-check-app-demo.webm)
