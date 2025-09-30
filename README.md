@@ -14,6 +14,16 @@ Built to **learn how speed checkers work**, understand **their use**, and practi
 
 ---
 
+## 🎥 Demo Video
+
+### Preview
+![Demo Preview](Screenshot from 2025-09-30 12-40-30.png)
+
+### Full Demo (.webm)
+<video src="speed-check-app-demo.webm" controls width="600"></video>
+
+---
+
 ## Files
 - `requirements.txt` → dependencies  
 - `streamlit_app.py` → main app file  
@@ -34,7 +44,3 @@ Built to **learn how speed checkers work**, understand **their use**, and practi
    ```bash
    streamlit run streamlit_app.py
    ```
-
-## 🎥 Demo Video
-
-<video src="speed-check-app-demo.webm" controls width="600"></video>
