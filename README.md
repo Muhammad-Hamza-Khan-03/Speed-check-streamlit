@@ -34,3 +34,6 @@ Built to **learn how speed checkers work**, understand **their use**, and practi
    ```bash
    streamlit run streamlit_app.py
    ```
+
+### Demo Video:
+![Demo](speed-check-app-demo.webm)
