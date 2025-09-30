@@ -35,5 +35,6 @@ Built to **learn how speed checkers work**, understand **their use**, and practi
    streamlit run streamlit_app.py
    ```
 
-### Demo Video:
-[![Demo](Screenshot from 2025-09-30 12-40-30.png)](speed-check-app-demo.webm)
+## 🎥 Demo Video
+
+<video src="speed-check-app-demo.webm" controls width="600"></video>
